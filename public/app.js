@@ -1,434 +1,418 @@
-const socket = io();
-const KIOSK_CONFIG = window.KIOSK_CONFIG || {};
-const $ = (id) => document.getElementById(id);
+(function () {
+  const kioskConfig = window.KIOSK_CONFIG || {};
+  const els = {
+    siteName: document.getElementById('siteName'),
+    archLogo: document.getElementById('archLogo'),
+    statusPill: document.getElementById('statusPill'),
+    lastUpdate: document.getElementById('lastUpdate'),
+    heroValue: document.getElementById('heroValue'),
+    powerMark: document.getElementById('powerMark'),
+    siteCount: document.getElementById('siteCount'),
+    healthySiteCount: document.getElementById('healthySiteCount'),
+    totalSiteCapacity: document.getElementById('totalSiteCapacity'),
+    energyToday: document.getElementById('energyToday'),
+    energyMonth: document.getElementById('energyMonth'),
+    energyYear: document.getElementById('energyYear'),
+    energyLifetime: document.getElementById('energyLifetime'),
+    milesDriven: document.getElementById('milesDriven'),
+    devicesCharged: document.getElementById('devicesCharged'),
+    treesPlanted: document.getElementById('treesPlanted'),
+    siteList: document.getElementById('siteList'),
+    weatherCard: document.getElementById('weatherCard'),
+    weatherTemp: document.getElementById('weatherTemp'),
+    weatherDesc: document.getElementById('weatherDesc'),
+    weatherMeta: document.getElementById('weatherMeta')
+  };
 
-const els = {
-  siteName: $('siteName'),
-  power: $('power'),
-  powerUnit: $('powerUnit'),
-  pred: $('pred'),
-  predUnit: $('predUnit'),
-  weather: $('weather'),
-  weatherIcon: $('weatherIcon'),
-  weatherCaption: $('weatherCaption'),
-  lastUpdated: $('lastUpdated'),
-  connectionStatus: $('connectionStatus'),
-  capacityFill: $('capacityFill'),
-  capacityPercent: $('capacityPercent'),
-  modeLabel: $('modeLabel'),
-  gridLine: $('gridLine'),
-  gridLabel: $('gridLabel'),
-  todayEnergy: $('todayEnergy'),
-  todayUnit: $('todayUnit'),
-  monthEnergy: $('monthEnergy'),
-  monthUnit: $('monthUnit'),
-  lifetimeEnergy: $('lifetimeEnergy'),
-  lifetimeUnit: $('lifetimeUnit'),
-  co2Offset: $('co2Offset'),
-  milesAvoided: $('milesAvoided'),
-  treesPlanted: $('treesPlanted'),
-  devicesCharged: $('devicesCharged')
-};
+  const state = {
+    config: null,
+    payload: null,
+    connected: false
+  };
 
-const DEFAULT_SYSTEM_CAPACITY_WATTS = 600000;
-const POUNDS_CO2_PER_KWH = 0.855;
-const METRIC_TONS_CO2_PER_MILE = 3.93e-4;
-const METRIC_TONS_CO2_PER_TREE_SEEDLING = 0.060;
-const KWH_PER_SMARTPHONE_CHARGE = 0.019;
-const FALLBACK_SITE_NAME = 'Solar Portfolio';
-
-let configuredSiteName = '';
-let configuredSystemCapacityWatts = DEFAULT_SYSTEM_CAPACITY_WATTS;
-
-function parsePositiveNumber(value) {
-  const number = Number(value);
-  return Number.isFinite(number) && number > 0 ? number : null;
-}
-
-function normalizeCapacityToWatts(value) {
-  const number = parsePositiveNumber(value);
-  if (!number) return null;
-  return number < 1000 ? number * 1000 : number;
-}
-
-function readManualSiteName() {
-  const params = new URLSearchParams(window.location.search);
-  const queryName = String(params.get('siteName') || '').trim();
-  if (params.has('clearSiteName')) localStorage.removeItem('kioskSiteName');
-  if (queryName) {
-    localStorage.setItem('kioskSiteName', queryName);
-    return queryName;
-  }
-  return String(KIOSK_CONFIG.siteName || localStorage.getItem('kioskSiteName') || '').trim();
-}
-
-function readManualCapacityWatts() {
-  const params = new URLSearchParams(window.location.search);
-  const queryWatts = normalizeCapacityToWatts(params.get('capacityWatts'));
-  const queryKw = normalizeCapacityToWatts(params.get('capacityKw'));
-  if (queryWatts || queryKw) {
-    const watts = queryWatts || queryKw;
-    localStorage.setItem('kioskSystemCapacityWatts', String(watts));
-    return watts;
-  }
-  return normalizeCapacityToWatts(KIOSK_CONFIG.systemCapacityWatts)
-    || normalizeCapacityToWatts(KIOSK_CONFIG.systemCapacityKw)
-    || normalizeCapacityToWatts(localStorage.getItem('kioskSystemCapacityWatts'))
-    || null;
-}
-
-const manualSiteName = readManualSiteName();
-const manualCapacityWatts = readManualCapacityWatts();
-if (manualCapacityWatts) configuredSystemCapacityWatts = manualCapacityWatts;
-
-function isGenericSiteName(value) {
-  const text = String(value || '').trim().toLowerCase();
-  return !text
-    || text === 'solar performance dashboard'
-    || text === 'solar site'
-    || text === 'solar portfolio'
-    || text === FALLBACK_SITE_NAME.toLowerCase();
-}
-
-function applySiteName(value) {
-  const candidate = String(value || '').trim();
-  const siteName = candidate || configuredSiteName || FALLBACK_SITE_NAME;
-  configuredSiteName = siteName;
-  els.siteName.textContent = siteName;
-  document.title = `${siteName} | SolarEdge Portfolio Dashboard`;
-  return siteName;
-}
-
-async function loadKioskConfig() {
-  if (manualSiteName) {
-    applySiteName(manualSiteName);
-    return;
+  if (els.archLogo && kioskConfig.brandLogoSrc) {
+    els.archLogo.src = kioskConfig.brandLogoSrc;
   }
 
-  try {
+  function isSafeCssValue(value) {
+    return typeof value === 'string' && value.trim() && !/[;{}]/.test(value);
+  }
+
+  function setCssVar(name, value) {
+    if (!isSafeCssValue(value)) return;
+    document.documentElement.style.setProperty(name, value.trim());
+  }
+
+  function applySunIconConfig() {
+    const sun = kioskConfig.sunIcon || {};
+    const legacy = kioskConfig.heroSun || {};
+    const settings = { ...legacy, ...sun };
+
+    setCssVar('--sky-top', settings.skyColorTop);
+    setCssVar('--sky-bottom', settings.skyColorBottom);
+    setCssVar('--sky-arc', settings.arcColor);
+    setCssVar('--sun-primary', settings.sunColor || settings.primaryColor);
+    setCssVar('--sun-edge', settings.sunEdgeColor || settings.edgeColor);
+    setCssVar('--sun-glow', settings.sunGlowColor || settings.glowColor);
+    setCssVar('--building-body', settings.buildingColor);
+    setCssVar('--building-shadow', settings.buildingShadowColor);
+    setCssVar('--building-window', settings.buildingWindowColor);
+    setCssVar('--ground-color', settings.groundColor);
+
+    const size = Number(settings.sizePx || settings.size);
+    if (Number.isFinite(size) && size >= 64 && size <= 260) {
+      document.documentElement.style.setProperty('--sun-size', `${Math.round(size)}px`);
+    }
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function degToRad(value) {
+    return value * (Math.PI / 180);
+  }
+
+  function radToDeg(value) {
+    return value * (180 / Math.PI);
+  }
+
+  function normalizeDegrees(value) {
+    return ((value % 360) + 360) % 360;
+  }
+
+  function getSolarPosition(date, latitude, longitude) {
+    const julianDate = (date.getTime() / 86400000) + 2440587.5;
+    const n = julianDate - 2451545.0;
+    const meanLongitude = normalizeDegrees(280.46 + (0.9856474 * n));
+    const meanAnomaly = normalizeDegrees(357.528 + (0.9856003 * n));
+    const eclipticLongitude = meanLongitude + (1.915 * Math.sin(degToRad(meanAnomaly))) + (0.02 * Math.sin(2 * degToRad(meanAnomaly)));
+    const obliquity = 23.439 - (0.0000004 * n);
+
+    const rightAscension = Math.atan2(
+      Math.cos(degToRad(obliquity)) * Math.sin(degToRad(eclipticLongitude)),
+      Math.cos(degToRad(eclipticLongitude))
+    );
+    const declination = Math.asin(
+      Math.sin(degToRad(obliquity)) * Math.sin(degToRad(eclipticLongitude))
+    );
+
+    const utcHours =
+      date.getUTCHours() +
+      (date.getUTCMinutes() / 60) +
+      (date.getUTCSeconds() / 3600) +
+      (date.getUTCMilliseconds() / 3600000);
+
+    const gmst = normalizeDegrees((6.697375 + (0.0657098242 * n) + utcHours) * 15);
+    const localSiderealTime = normalizeDegrees(gmst + longitude);
+    const hourAngle = normalizeDegrees(localSiderealTime - radToDeg(rightAscension));
+    const hourAngleRad = degToRad(hourAngle > 180 ? hourAngle - 360 : hourAngle);
+    const latitudeRad = degToRad(latitude);
+
+    const altitude = Math.asin(
+      (Math.sin(declination) * Math.sin(latitudeRad)) +
+      (Math.cos(declination) * Math.cos(latitudeRad) * Math.cos(hourAngleRad))
+    );
+
+    const azimuth = Math.atan2(
+      -Math.sin(hourAngleRad),
+      (Math.tan(declination) * Math.cos(latitudeRad)) - (Math.sin(latitudeRad) * Math.cos(hourAngleRad))
+    );
+
+    return {
+      altitude: radToDeg(altitude),
+      azimuth: normalizeDegrees(radToDeg(azimuth) + 180)
+    };
+  }
+
+  function renderSolarTracker() {
+    if (!els.powerMark) return;
+
+    const settings = { ...(kioskConfig.heroSun || {}), ...(kioskConfig.sunIcon || {}) };
+    const latitude = Number.isFinite(Number(settings.latitude)) ? Number(settings.latitude) : 43.0389;
+    const longitude = Number.isFinite(Number(settings.longitude)) ? Number(settings.longitude) : -87.9065;
+    const position = getSolarPosition(new Date(), latitude, longitude);
+    const progress = clamp((position.azimuth - 90) / 180, 0, 1);
+    const clampedAltitude = clamp(position.altitude, -8, 72);
+    const x = 12 + (76 * progress);
+    const y = 74 - (((clampedAltitude + 8) / 80) * 50);
+    const isNight = position.altitude <= -1;
+
+    document.documentElement.style.setProperty('--sun-x', `${x}%`);
+    document.documentElement.style.setProperty('--sun-y', `${y}%`);
+    document.documentElement.style.setProperty('--sun-opacity', isNight ? '0.18' : '1');
+    document.documentElement.style.setProperty('--sun-scale', isNight ? '0.84' : '1');
+    els.powerMark.classList.toggle('night', isNight);
+  }
+
+  applySunIconConfig();
+  renderSolarTracker();
+  window.setInterval(renderSolarTracker, 60000);
+
+  function setStatus(text, mode) {
+    if (!els.statusPill) return;
+    els.statusPill.textContent = text;
+    els.statusPill.classList.remove('online', 'offline', 'warning');
+    els.statusPill.classList.add(mode || 'warning');
+  }
+
+  function numberOrNull(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function compactNumber(value) {
+    if (!Number.isFinite(value)) return '--';
+    return new Intl.NumberFormat(undefined, {
+      notation: Math.abs(value) >= 10000 ? 'compact' : 'standard',
+      maximumFractionDigits: Math.abs(value) >= 10000 ? 1 : 0
+    }).format(value);
+  }
+
+  function formatPower(watts) {
+    const value = numberOrNull(watts);
+    if (value === null) return '--';
+    if (Math.abs(value) >= 1000000) return `${(value / 1000000).toFixed(2)} MW`;
+    if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(1)} kW`;
+    return `${Math.round(value)} W`;
+  }
+
+  function formatEnergy(wh) {
+    const value = numberOrNull(wh);
+    if (value === null) return '--';
+    if (Math.abs(value) >= 1000000) return `${(value / 1000000).toFixed(2)} MWh`;
+    if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(1)} kWh`;
+    return `${Math.round(value)} Wh`;
+  }
+
+  function formatLastUpdate(value) {
+    if (!value) return 'Last update --';
+    const parsed = new Date(String(value).replace(' ', 'T'));
+    if (Number.isNaN(parsed.getTime())) return `Last update ${value}`;
+    return `Last update ${parsed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  }
+
+  function titleCase(text) {
+    return String(text || '')
+      .split(' ')
+      .filter(Boolean)
+      .map((part) => part[0].toUpperCase() + part.slice(1))
+      .join(' ');
+  }
+
+  function normalizeCapacityToWatts(value, unitHint) {
+    const number = numberOrNull(value);
+    if (number === null || number <= 0) return null;
+    if (unitHint === 'kw') return number * 1000;
+    if (unitHint === 'mw') return number * 1000000;
+    return number;
+  }
+
+  function sumSiteCapacities(sites) {
+    if (!Array.isArray(sites) || !sites.length) return null;
+    const values = sites
+      .map((site) => normalizeCapacityToWatts(site && (site.systemCapacityWatts || site.totalSiteCapacityWatts), 'watts'))
+      .filter((value) => Number.isFinite(value));
+    return values.length ? values.reduce((total, value) => total + value, 0) : null;
+  }
+
+  function getTotalCapacityWatts(solar, config) {
+    const directCandidates = [
+      solar && solar.systemCapacityWatts,
+      solar && solar.totalSiteCapacityWatts,
+      config && config.systemCapacityWatts,
+      config && config.totalSiteCapacityWatts,
+      kioskConfig.systemCapacityWatts
+    ];
+
+    for (const candidate of directCandidates) {
+      const watts = normalizeCapacityToWatts(candidate, 'watts');
+      if (watts) return watts;
+    }
+
+    const kwCandidates = [
+      solar && solar.systemCapacityKw,
+      solar && solar.totalSiteCapacityKw,
+      config && config.systemCapacityKw,
+      config && config.totalSiteCapacityKw,
+      kioskConfig.systemCapacityKw
+    ];
+
+    for (const candidate of kwCandidates) {
+      const watts = normalizeCapacityToWatts(candidate, 'kw');
+      if (watts) return watts;
+    }
+
+    return sumSiteCapacities(solar && solar.sites) || sumSiteCapacities(config && config.sites);
+  }
+
+  function renderWeather(weather, config) {
+    const enabled = Boolean(config && config.weatherEnabled);
+    if (!enabled) {
+      els.weatherCard.classList.add('hidden');
+      return;
+    }
+
+    els.weatherCard.classList.remove('hidden');
+    if (!weather || !weather.main) {
+      els.weatherTemp.textContent = '--';
+      els.weatherDesc.textContent = 'Weather unavailable';
+      els.weatherMeta.textContent = config && config.city ? config.city : '--';
+      return;
+    }
+
+    els.weatherTemp.textContent = `${Math.round(weather.main.temp)}°F`;
+    els.weatherDesc.textContent = titleCase(weather.weather && weather.weather[0] && weather.weather[0].description || '');
+    const city = weather.name || (config && config.city) || '--';
+    const humidity = Number.isFinite(weather.main.humidity) ? `${weather.main.humidity}% humidity` : '';
+    const wind = weather.wind && Number.isFinite(weather.wind.speed) ? `${Math.round(weather.wind.speed)} mph wind` : '';
+    els.weatherMeta.textContent = [city, humidity, wind].filter(Boolean).join(' • ');
+  }
+
+  function renderImpact(lifetimeWh) {
+    const wh = numberOrNull(lifetimeWh);
+    if (wh === null) {
+      els.milesDriven.textContent = '--';
+      els.devicesCharged.textContent = '--';
+      els.treesPlanted.textContent = '--';
+      return;
+    }
+
+    const kwh = wh / 1000;
+    const co2LbsAvoided = kwh * 0.855;
+    const milesAvoided = co2LbsAvoided / 0.888;
+    const devicesCharged = kwh / 0.012;
+    const treesPlanted = co2LbsAvoided / 48;
+
+    els.milesDriven.textContent = compactNumber(Math.round(milesAvoided));
+    els.devicesCharged.textContent = compactNumber(Math.round(devicesCharged));
+    els.treesPlanted.textContent = compactNumber(Math.round(treesPlanted));
+  }
+
+  function createSiteRow(site, index) {
+    const row = document.createElement('div');
+    row.className = `site-row ${site.online ? 'online' : 'offline'}`;
+
+    const main = document.createElement('div');
+    main.className = 'site-row-main';
+
+    const name = document.createElement('div');
+    name.className = 'site-name';
+    name.textContent = site.siteName || `Production Site ${index + 1}`;
+
+    const capacityWatts = normalizeCapacityToWatts(site.systemCapacityWatts || site.totalSiteCapacityWatts, 'watts');
+    const siteIsOnline = Boolean(site.online && site.overview && !site.error);
+    const powerWatts = siteIsOnline
+      ? numberOrNull(site.overview && site.overview.currentPower && site.overview.currentPower.power)
+      : 0;
+    const powerText = formatPower(powerWatts === null ? 0 : powerWatts);
+
+    row.classList.toggle('online', siteIsOnline);
+    row.classList.toggle('offline', !siteIsOnline);
+
+    const meta = document.createElement('div');
+    meta.className = 'site-meta';
+    meta.textContent = capacityWatts ? `${powerText} / ${formatPower(capacityWatts)} cap.` : powerText;
+
+    main.appendChild(name);
+    main.appendChild(meta);
+
+    const pill = document.createElement('div');
+    pill.className = 'site-dot';
+    pill.setAttribute('aria-label', siteIsOnline ? 'Online' : 'Offline');
+    pill.setAttribute('title', siteIsOnline ? 'Online' : 'Offline');
+
+    row.appendChild(main);
+    row.appendChild(pill);
+
+    return row;
+  }
+
+  function renderSites(solar, config) {
+    const configSites = config && Array.isArray(config.sites) ? config.sites : [];
+    const solarSites = solar && Array.isArray(solar.sites) ? solar.sites : [];
+    const max = Math.max(configSites.length, solarSites.length);
+
+    els.siteList.innerHTML = '';
+    for (let index = 0; index < max; index += 1) {
+      const configSite = configSites[index] || {};
+      const solarSite = solarSites[index] || {};
+      const merged = {
+        siteName: solarSite.siteName || configSite.siteName || `Production Site ${index + 1}`,
+        siteId: solarSite.siteId || configSite.siteId || null,
+        systemCapacityWatts: solarSite.systemCapacityWatts || configSite.systemCapacityWatts || null,
+        overview: solarSite.overview || null,
+        online: typeof solarSite.online === 'boolean' ? solarSite.online : Boolean(solarSite.overview),
+        error: solarSite.error || null
+      };
+      els.siteList.appendChild(createSiteRow(merged, index));
+    }
+  }
+
+  function render(payload) {
+    state.payload = payload || {};
+    const config = state.config || {};
+    const solar = payload && payload.solar ? payload.solar : {};
+    const overview = solar.overview || {};
+    const lifetimeWh = overview.lifeTimeData && overview.lifeTimeData.energy;
+    const totalCapacityWatts = getTotalCapacityWatts(solar, config);
+
+    els.siteName.textContent = solar.siteName || config.siteName || kioskConfig.siteName || 'Solar Portfolio';
+    els.lastUpdate.textContent = formatLastUpdate(overview.lastUpdateTime);
+    els.heroValue.textContent = formatPower(overview.currentPower && overview.currentPower.power);
+    els.totalSiteCapacity.textContent = formatPower(totalCapacityWatts);
+    els.siteCount.textContent = Number.isFinite(solar.siteCount) ? solar.siteCount : (config.siteCount || 0);
+    els.healthySiteCount.textContent = Number.isFinite(solar.healthySiteCount) ? solar.healthySiteCount : 0;
+    els.energyToday.textContent = formatEnergy(overview.lastDayData && overview.lastDayData.energy);
+    els.energyMonth.textContent = formatEnergy(overview.lastMonthData && overview.lastMonthData.energy);
+    els.energyYear.textContent = formatEnergy(overview.lastYearData && overview.lastYearData.energy);
+    els.energyLifetime.textContent = formatEnergy(lifetimeWh);
+
+    renderImpact(lifetimeWh);
+    renderSites(solar, config);
+    renderWeather(payload && payload.weather, config);
+
+    const errors = payload && payload.errors ? payload.errors : {};
+    if (state.connected) {
+      setStatus(errors.solar ? 'Solar feed delayed' : 'Live', errors.solar ? 'warning' : 'online');
+    }
+  }
+
+  async function loadConfig() {
     const response = await fetch('/config', { cache: 'no-store' });
-    if (!response.ok) throw new Error(`config status ${response.status}`);
-    const config = await response.json();
-
-    if (config?.systemCapacityWatts && !manualCapacityWatts) {
-      const watts = normalizeCapacityToWatts(config.systemCapacityWatts);
-      if (watts) configuredSystemCapacityWatts = watts;
-    }
-
-    if (config?.siteName && !isGenericSiteName(config.siteName)) {
-      applySiteName(config.siteName);
-    } else if (config?.siteCount) {
-      applySiteName(`${FALLBACK_SITE_NAME} · ${config.siteCount} sites`);
-    }
-  } catch (error) {
-    console.warn('Kiosk config unavailable:', error);
-  }
-}
-
-applySiteName(manualSiteName || '');
-loadKioskConfig();
-
-function setStatus(label, state) {
-  els.connectionStatus.classList.remove('online', 'offline');
-  els.connectionStatus.classList.add(state);
-  els.connectionStatus.lastChild.textContent = ` ${label}`;
-}
-
-function formatNumber(value) {
-  if (!Number.isFinite(value)) return '--';
-  if (Math.abs(value) >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-  if (Math.abs(value) >= 10000) return Math.round(value).toLocaleString();
-  if (Math.abs(value) >= 100) return Math.round(value).toLocaleString();
-  if (Math.abs(value) >= 10) return value.toFixed(1);
-  return value.toFixed(1);
-}
-
-function formatPower(watts) {
-  if (!Number.isFinite(watts)) return { value: '--', unit: 'W' };
-  if (Math.abs(watts) >= 1000) return { value: (watts / 1000).toFixed(1), unit: 'kW' };
-  return { value: Math.round(watts).toLocaleString(), unit: 'W' };
-}
-
-function formatEnergy(wh) {
-  if (!Number.isFinite(wh)) return { value: '--', unit: 'kWh' };
-  const kwh = wh / 1000;
-  if (kwh >= 1000) return { value: (kwh / 1000).toFixed(2), unit: 'MWh' };
-  if (kwh >= 100) return { value: Math.round(kwh).toLocaleString(), unit: 'kWh' };
-  return { value: kwh.toFixed(1), unit: 'kWh' };
-}
-
-function setEnergy(valueEl, unitEl, wh) {
-  const energy = formatEnergy(wh);
-  valueEl.textContent = energy.value;
-  unitEl.textContent = energy.unit;
-}
-
-function getSystemCapacityWatts(solar) {
-  const candidates = [
-    manualCapacityWatts,
-    solar?.systemCapacityWatts,
-    solar?.systemCapacity,
-    ...(solar?.sites || []).map((site) => site.systemCapacityWatts)
-  ];
-
-  const siteCapacityTotal = solar?.sites?.length
-    ? (solar.sites || []).reduce((total, site) => total + (normalizeCapacityToWatts(site.systemCapacityWatts) || 0), 0)
-    : null;
-
-  if (siteCapacityTotal) {
-    configuredSystemCapacityWatts = siteCapacityTotal;
-    return siteCapacityTotal;
+    const data = await response.json();
+    state.config = data;
+    els.siteName.textContent = data.siteName || kioskConfig.siteName || 'Solar Portfolio';
+    render({ solar: data, weather: null, errors: {} });
   }
 
-  for (const candidate of candidates) {
-    const watts = normalizeCapacityToWatts(candidate);
-    if (watts) {
-      configuredSystemCapacityWatts = watts;
-      return watts;
-    }
+  function connectSocket() {
+    const socket = io({ transports: ['websocket', 'polling'] });
+
+    socket.on('connect', function () {
+      state.connected = true;
+      setStatus('Live', 'online');
+    });
+
+    socket.on('disconnect', function () {
+      state.connected = false;
+      setStatus('Offline', 'offline');
+    });
+
+    socket.on('connect_error', function () {
+      state.connected = false;
+      setStatus('Socket error', 'offline');
+    });
+
+    socket.on('data', function (payload) {
+      render(payload);
+    });
   }
 
-  return configuredSystemCapacityWatts || DEFAULT_SYSTEM_CAPACITY_WATTS;
-}
-
-function updateSystemCapacityDisplay(systemCapacityWatts) {
-  const capacity = formatPower(systemCapacityWatts);
-  els.pred.textContent = capacity.value;
-  els.predUnit.textContent = capacity.unit;
-}
-
-function getMode(power) {
-  if (power > 3000) return 'Peak Output';
-  if (power > 1000) return 'Strong Generation';
-  if (power > 250) return 'Low Generation';
-  return 'Standby';
-}
-
-function setScene(power) {
-  document.body.classList.remove('scene-day', 'scene-sunset', 'scene-night');
-  if (power > 2000) document.body.classList.add('scene-day');
-  else if (power > 300) document.body.classList.add('scene-sunset');
-  else document.body.classList.add('scene-night');
-}
-
-function updateFlow(power) {
-  const exporting = power > 500;
-  els.gridLine.classList.toggle('import', !exporting);
-  els.gridLabel.textContent = exporting ? 'Grid Export' : 'Grid Import';
-}
-
-function getWeatherIcon(condition, iconCode) {
-  const main = String(condition || '').toLowerCase();
-  const code = String(iconCode || '');
-  if (code.startsWith('01')) return code.endsWith('n') ? '☾' : '☀';
-  if (main.includes('thunder')) return '⚡';
-  if (main.includes('drizzle')) return '☂';
-  if (main.includes('rain')) return '☔';
-  if (main.includes('snow')) return '❄';
-  if (main.includes('cloud')) return '☁';
-  if (main.includes('mist') || main.includes('fog') || main.includes('haze') || main.includes('smoke')) return '≋';
-  return '☀';
-}
-
-function updateWeather(weather) {
-  const temp = weather?.main?.temp;
-  const condition = weather?.weather?.[0]?.main;
-  const description = weather?.weather?.[0]?.description;
-  const iconCode = weather?.weather?.[0]?.icon;
-  els.weatherIcon.textContent = getWeatherIcon(condition, iconCode);
-
-  if (Number.isFinite(temp) && condition) {
-    els.weather.textContent = `${Math.round(temp)}°F`;
-    els.weatherCaption.textContent = description
-      ? `${condition} · ${description.replace(/^./, (char) => char.toUpperCase())}`
-      : condition;
-    return;
-  }
-
-  els.weather.textContent = '--';
-  els.weatherCaption.textContent = 'Weather feed unavailable.';
-}
-
-function getSiteName(solar) {
-  if (manualSiteName) return manualSiteName;
-  if (configuredSiteName && !isGenericSiteName(configuredSiteName)) return configuredSiteName;
-  const candidate = solar?.siteName || (solar?.siteCount ? `${FALLBACK_SITE_NAME} · ${solar.siteCount} sites` : '');
-  if (!isGenericSiteName(candidate)) return candidate;
-  return configuredSiteName || FALLBACK_SITE_NAME;
-}
-
-function updateSiteName(solar) {
-  applySiteName(getSiteName(solar));
-}
-
-function updateEnvironmentalEquivalents(lifetimeKwh) {
-  if (!Number.isFinite(lifetimeKwh)) {
-    els.co2Offset.textContent = '--';
-    els.milesAvoided.textContent = '--';
-    els.treesPlanted.textContent = '--';
-    els.devicesCharged.textContent = '--';
-    return;
-  }
-
-  const lifetimeCo2Lbs = lifetimeKwh * POUNDS_CO2_PER_KWH;
-  const lifetimeCo2MetricTons = lifetimeCo2Lbs / 2204.62;
-  const milesAvoided = lifetimeCo2MetricTons / METRIC_TONS_CO2_PER_MILE;
-  const treesPlanted = lifetimeCo2MetricTons / METRIC_TONS_CO2_PER_TREE_SEEDLING;
-  const devicesCharged = lifetimeKwh / KWH_PER_SMARTPHONE_CHARGE;
-  els.co2Offset.textContent = Math.round(lifetimeCo2Lbs).toLocaleString();
-  els.milesAvoided.textContent = formatNumber(milesAvoided);
-  els.treesPlanted.textContent = formatNumber(treesPlanted);
-  els.devicesCharged.textContent = formatNumber(devicesCharged);
-}
-
-function updateSolar(solar) {
-  updateSiteName(solar);
-  const overview = solar?.overview || {};
-  const power = overview?.currentPower?.power;
-
-  if (!Number.isFinite(power)) {
-    els.power.textContent = '--';
-    els.powerUnit.textContent = 'W';
-    updateSystemCapacityDisplay(getSystemCapacityWatts(solar));
-    els.capacityFill.style.width = '0%';
-    els.capacityPercent.textContent = '--';
-    els.modeLabel.textContent = solar?.siteCount ? `${solar.siteCount} sites · Waiting` : 'Waiting';
-    updateEnvironmentalEquivalents(null);
-    return false;
-  }
-
-  const current = formatPower(power);
-  const systemCapacityWatts = getSystemCapacityWatts(solar);
-  const capacity = Math.min(100, Math.max(0, (power / systemCapacityWatts) * 100));
-  const siteLabel = solar?.siteCount ? `${solar.healthySiteCount || solar.siteCount}/${solar.siteCount} sites · ` : '';
-
-  els.power.textContent = current.value;
-  els.powerUnit.textContent = current.unit;
-  updateSystemCapacityDisplay(systemCapacityWatts);
-  els.capacityFill.style.width = `${capacity}%`;
-  els.capacityPercent.textContent = `${Math.round(capacity)}%`;
-  els.modeLabel.textContent = `${siteLabel}${getMode(power)}`;
-
-  setEnergy(els.todayEnergy, els.todayUnit, overview?.lastDayData?.energy);
-  setEnergy(els.monthEnergy, els.monthUnit, overview?.lastMonthData?.energy);
-  setEnergy(els.lifetimeEnergy, els.lifetimeUnit, overview?.lifeTimeData?.energy);
-  const lifetimeKwh = Number.isFinite(overview?.lifeTimeData?.energy) ? overview.lifeTimeData.energy / 1000 : null;
-  updateEnvironmentalEquivalents(lifetimeKwh);
-  setScene(power);
-  updateFlow(power);
-  scaleGlobe(power);
-  return true;
-}
-
-function updateTimestamp() {
-  els.lastUpdated.textContent = new Date().toLocaleTimeString([], {
-    hour: 'numeric',
-    minute: '2-digit',
-    second: '2-digit'
-  });
-}
-
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({
-  canvas: $('globe'),
-  alpha: true,
-  antialias: true
-});
-
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-
-const globe = new THREE.Mesh(
-  new THREE.SphereGeometry(2.2, 64, 64),
-  new THREE.MeshBasicMaterial({
-    color: 0xf37021,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.3
-  })
-);
-
-scene.add(globe);
-camera.position.z = 5;
-
-function scaleGlobe(power) {
-  const scale = 1 + Math.min(power, configuredSystemCapacityWatts || DEFAULT_SYSTEM_CAPACITY_WATTS) / 16000;
-  globe.scale.setScalar(scale);
-}
-
-function animateGlobe() {
-  requestAnimationFrame(animateGlobe);
-  globe.rotation.y += 0.0018;
-  globe.rotation.x += 0.00045;
-  renderer.render(scene, camera);
-}
-
-animateGlobe();
-
-const canvas = $('particles');
-const ctx = canvas.getContext('2d');
-let particles = [];
-
-function resizeCanvases() {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  canvas.width = width;
-  canvas.height = height;
-  renderer.setSize(width, height);
-  camera.aspect = width / height;
-  camera.updateProjectionMatrix();
-  particles = Array.from({ length: Math.floor(width / 24) }, () => ({
-    x: Math.random() * width,
-    y: Math.random() * height,
-    speed: Math.random() * 0.65 + 0.15,
-    size: Math.random() * 2 + 0.6,
-    opacity: Math.random() * 0.45 + 0.1
-  }));
-}
-
-function animateParticles() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  particles.forEach((particle) => {
-    particle.y -= particle.speed;
-    particle.x += Math.sin(particle.y / 90) * 0.18;
-    if (particle.y < -10) particle.y = canvas.height + 10;
-    ctx.beginPath();
-    ctx.fillStyle = `rgba(243, 112, 33, ${particle.opacity})`;
-    ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-    ctx.fill();
-  });
-  requestAnimationFrame(animateParticles);
-}
-
-window.addEventListener('resize', resizeCanvases);
-resizeCanvases();
-animateParticles();
-
-socket.on('connect', () => setStatus('Live', 'online'));
-socket.on('disconnect', () => setStatus('Offline', 'offline'));
-socket.on('data', ({ solar, weather, errors } = {}) => {
-  const hasSolar = updateSolar(solar);
-  updateWeather(weather);
-  updateTimestamp();
-
-  if (!hasSolar) {
-    setStatus(errors?.solar || 'Waiting', 'offline');
-    return;
-  }
-
-  setStatus(errors?.solar ? 'Partial' : 'Live', errors?.solar ? 'offline' : 'online');
-});
-
-let idleTimer;
-function resetIdle() {
-  document.body.style.opacity = 1;
-  clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => {
-    document.body.style.opacity = 0.82;
-  }, 300000);
-}
-
-window.addEventListener('mousemove', resetIdle);
-window.addEventListener('touchstart', resetIdle);
-resetIdle();
+  loadConfig()
+    .then(connectSocket)
+    .catch(function (error) {
+      console.error(error);
+      setStatus('Load failed', 'offline');
+    });
+})();
