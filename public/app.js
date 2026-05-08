@@ -345,19 +345,27 @@
     const config = state.config || {};
     const solar = payload && payload.solar ? payload.solar : {};
     const overview = solar.overview || {};
+    const lifetimeWh = overview.lifeTimeData && overview.lifeTimeData.energy;
     const totalCapacityWatts = getTotalCapacityWatts(solar, config);
 
     const mergedSites = mergeSites(solar, config);
+    const cycleItems = [null, ...mergedSites];
+    const activeItem = cycleItems[state.activeSiteIndex % cycleItems.length];
+    const activeSite = activeItem;
     const hasSites = mergedSites.length > 0;
-    const activeSite = hasSites ? mergedSites[state.activeSiteIndex % mergedSites.length] : null;
     const activeOverview = activeSite && activeSite.overview ? activeSite.overview : overview;
     const displayName = activeSite ? activeSite.siteName : (solar.siteName || config.siteName || kioskConfig.siteName || 'Solar Portfolio');
+    const activeCapacityWatts = activeSite
+      ? normalizeCapacityToWatts(activeSite.systemCapacityWatts || activeSite.totalSiteCapacityWatts, 'watts')
+      : totalCapacityWatts;
 
     els.siteName.textContent = displayName;
-    els.heroEyebrow.textContent = hasSites ? `Site generation • ${state.activeSiteIndex + 1} of ${mergedSites.length}` : 'Portfolio generation';
+    els.heroEyebrow.textContent = activeSite
+      ? `Site generation • ${state.activeSiteIndex + 1} of ${cycleItems.length}`
+      : (hasSites ? 'Portfolio generation • cumulative view' : 'Portfolio generation');
     els.lastUpdate.textContent = formatLastUpdate(overview.lastUpdateTime);
     els.heroValue.textContent = formatPower(activeOverview.currentPower && activeOverview.currentPower.power);
-    els.totalSiteCapacity.textContent = formatPower(totalCapacityWatts);
+    els.totalSiteCapacity.textContent = formatPower(activeCapacityWatts);
     els.siteCount.textContent = Number.isFinite(solar.siteCount) ? solar.siteCount : (config.siteCount || 0);
     els.healthySiteCount.textContent = Number.isFinite(solar.healthySiteCount) ? solar.healthySiteCount : 0;
     els.energyToday.textContent = formatEnergy(activeOverview.lastDayData && activeOverview.lastDayData.energy);
@@ -418,8 +426,8 @@
     const cycleMs = Math.max(Number(kioskConfig.siteCycleMs) || 15000, 5000);
     siteCycleHandle = window.setInterval(function () {
       const sites = mergeSites((state.payload && state.payload.solar) || {}, state.config || {});
-      if (sites.length <= 1) return;
-      state.activeSiteIndex = (state.activeSiteIndex + 1) % sites.length;
+      if (!sites.length) return;
+      state.activeSiteIndex = (state.activeSiteIndex + 1) % (sites.length + 1);
       render(state.payload || {});
     }, cycleMs);
   }
