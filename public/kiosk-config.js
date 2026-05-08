@@ -4,7 +4,7 @@ window.KIOSK_CONFIG = {
   siteName: '',
 
   // Optional logo override. Defaults to the bundled Arch Solar C&I vector lockup.
-  brandLogoSrc: '/arch-solar-ci-logo.png',
+  brandLogoSrc: '/arch-solar-ci-logo.svg',
 
   // Building + sun tracker customization for the hero mark.
   // Default coordinates point to Milwaukee, WI.
