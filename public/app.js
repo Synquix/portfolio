@@ -6,6 +6,8 @@
     statusPill: document.getElementById('statusPill'),
     lastUpdate: document.getElementById('lastUpdate'),
     heroValue: document.getElementById('heroValue'),
+    heroEyebrow: document.getElementById('heroEyebrow'),
+    siteHeroImage: document.getElementById('siteHeroImage'),
     powerMark: document.getElementById('powerMark'),
     siteCount: document.getElementById('siteCount'),
     healthySiteCount: document.getElementById('healthySiteCount'),
@@ -27,8 +29,10 @@
   const state = {
     config: null,
     payload: null,
-    connected: false
+    connected: false,
+    activeSiteIndex: 0
   };
+  let siteCycleHandle = null;
 
   if (els.archLogo && kioskConfig.brandLogoSrc) {
     els.archLogo.src = kioskConfig.brandLogoSrc;
@@ -329,23 +333,10 @@
   }
 
   function renderSites(solar, config) {
-    const configSites = config && Array.isArray(config.sites) ? config.sites : [];
-    const solarSites = solar && Array.isArray(solar.sites) ? solar.sites : [];
-    const max = Math.max(configSites.length, solarSites.length);
-
+    const sites = mergeSites(solar, config);
     els.siteList.innerHTML = '';
-    for (let index = 0; index < max; index += 1) {
-      const configSite = configSites[index] || {};
-      const solarSite = solarSites[index] || {};
-      const merged = {
-        siteName: solarSite.siteName || configSite.siteName || `Production Site ${index + 1}`,
-        siteId: solarSite.siteId || configSite.siteId || null,
-        systemCapacityWatts: solarSite.systemCapacityWatts || configSite.systemCapacityWatts || null,
-        overview: solarSite.overview || null,
-        online: typeof solarSite.online === 'boolean' ? solarSite.online : Boolean(solarSite.overview),
-        error: solarSite.error || null
-      };
-      els.siteList.appendChild(createSiteRow(merged, index));
+    for (let index = 0; index < sites.length; index += 1) {
+      els.siteList.appendChild(createSiteRow(sites[index], index));
     }
   }
 
@@ -354,22 +345,29 @@
     const config = state.config || {};
     const solar = payload && payload.solar ? payload.solar : {};
     const overview = solar.overview || {};
-    const lifetimeWh = overview.lifeTimeData && overview.lifeTimeData.energy;
     const totalCapacityWatts = getTotalCapacityWatts(solar, config);
 
-    els.siteName.textContent = solar.siteName || config.siteName || kioskConfig.siteName || 'Solar Portfolio';
+    const mergedSites = mergeSites(solar, config);
+    const hasSites = mergedSites.length > 0;
+    const activeSite = hasSites ? mergedSites[state.activeSiteIndex % mergedSites.length] : null;
+    const activeOverview = activeSite && activeSite.overview ? activeSite.overview : overview;
+    const displayName = activeSite ? activeSite.siteName : (solar.siteName || config.siteName || kioskConfig.siteName || 'Solar Portfolio');
+
+    els.siteName.textContent = displayName;
+    els.heroEyebrow.textContent = hasSites ? `Site generation • ${state.activeSiteIndex + 1} of ${mergedSites.length}` : 'Portfolio generation';
     els.lastUpdate.textContent = formatLastUpdate(overview.lastUpdateTime);
-    els.heroValue.textContent = formatPower(overview.currentPower && overview.currentPower.power);
+    els.heroValue.textContent = formatPower(activeOverview.currentPower && activeOverview.currentPower.power);
     els.totalSiteCapacity.textContent = formatPower(totalCapacityWatts);
     els.siteCount.textContent = Number.isFinite(solar.siteCount) ? solar.siteCount : (config.siteCount || 0);
     els.healthySiteCount.textContent = Number.isFinite(solar.healthySiteCount) ? solar.healthySiteCount : 0;
-    els.energyToday.textContent = formatEnergy(overview.lastDayData && overview.lastDayData.energy);
-    els.energyMonth.textContent = formatEnergy(overview.lastMonthData && overview.lastMonthData.energy);
-    els.energyYear.textContent = formatEnergy(overview.lastYearData && overview.lastYearData.energy);
-    els.energyLifetime.textContent = formatEnergy(lifetimeWh);
+    els.energyToday.textContent = formatEnergy(activeOverview.lastDayData && activeOverview.lastDayData.energy);
+    els.energyMonth.textContent = formatEnergy(activeOverview.lastMonthData && activeOverview.lastMonthData.energy);
+    els.energyYear.textContent = formatEnergy(activeOverview.lastYearData && activeOverview.lastYearData.energy);
+    els.energyLifetime.textContent = formatEnergy(activeOverview.lifeTimeData && activeOverview.lifeTimeData.energy);
 
-    renderImpact(lifetimeWh);
+    renderImpact(activeOverview.lifeTimeData && activeOverview.lifeTimeData.energy);
     renderSites(solar, config);
+    renderSiteImage(activeSite);
     renderWeather(payload && payload.weather, config);
 
     const errors = payload && payload.errors ? payload.errors : {};
@@ -378,12 +376,61 @@
     }
   }
 
+  function mergeSites(solar, config) {
+    const configSites = config && Array.isArray(config.sites) ? config.sites : [];
+    const solarSites = solar && Array.isArray(solar.sites) ? solar.sites : [];
+    const max = Math.max(configSites.length, solarSites.length);
+    const customImages = kioskConfig.siteImages || {};
+
+    const merged = [];
+    for (let index = 0; index < max; index += 1) {
+      const configSite = configSites[index] || {};
+      const solarSite = solarSites[index] || {};
+      const siteName = solarSite.siteName || configSite.siteName || `Production Site ${index + 1}`;
+      const siteId = solarSite.siteId || configSite.siteId || null;
+      merged.push({
+        siteName,
+        siteId,
+        systemCapacityWatts: solarSite.systemCapacityWatts || configSite.systemCapacityWatts || null,
+        overview: solarSite.overview || null,
+        online: typeof solarSite.online === 'boolean' ? solarSite.online : Boolean(solarSite.overview),
+        error: solarSite.error || null,
+        imageSrc: configSite.imageSrc || customImages[String(siteId)] || customImages[siteName] || null
+      });
+    }
+    return merged;
+  }
+
+  function renderSiteImage(activeSite) {
+    if (!els.siteHeroImage) return;
+    if (!activeSite || !activeSite.imageSrc) {
+      els.siteHeroImage.classList.add('hidden');
+      els.siteHeroImage.removeAttribute('src');
+      return;
+    }
+    els.siteHeroImage.src = activeSite.imageSrc;
+    els.siteHeroImage.alt = `${activeSite.siteName} site image`;
+    els.siteHeroImage.classList.remove('hidden');
+  }
+
+  function startSiteCycle() {
+    if (siteCycleHandle) window.clearInterval(siteCycleHandle);
+    const cycleMs = Math.max(Number(kioskConfig.siteCycleMs) || 15000, 5000);
+    siteCycleHandle = window.setInterval(function () {
+      const sites = mergeSites((state.payload && state.payload.solar) || {}, state.config || {});
+      if (sites.length <= 1) return;
+      state.activeSiteIndex = (state.activeSiteIndex + 1) % sites.length;
+      render(state.payload || {});
+    }, cycleMs);
+  }
+
   async function loadConfig() {
     const response = await fetch('/config', { cache: 'no-store' });
     const data = await response.json();
     state.config = data;
     els.siteName.textContent = data.siteName || kioskConfig.siteName || 'Solar Portfolio';
     render({ solar: data, weather: null, errors: {} });
+    startSiteCycle();
   }
 
   function connectSocket() {
