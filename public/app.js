@@ -2,16 +2,25 @@
   const kioskConfig = window.KIOSK_CONFIG || {};
   const els = {
     siteName: document.getElementById('siteName'),
+    slideSubtitle: document.getElementById('slideSubtitle'),
+    slideEyebrow: document.getElementById('slideEyebrow'),
     archLogo: document.getElementById('archLogo'),
     statusPill: document.getElementById('statusPill'),
     lastUpdate: document.getElementById('lastUpdate'),
     heroValue: document.getElementById('heroValue'),
-    heroEyebrow: document.getElementById('heroEyebrow'),
-    siteHeroImage: document.getElementById('siteHeroImage'),
-    powerMark: document.getElementById('powerMark'),
+    heroUnit: document.getElementById('heroUnit'),
     siteCount: document.getElementById('siteCount'),
+    siteCountLabel: document.getElementById('siteCountLabel'),
     healthySiteCount: document.getElementById('healthySiteCount'),
+    healthySiteLabel: document.getElementById('healthySiteLabel'),
     totalSiteCapacity: document.getElementById('totalSiteCapacity'),
+    capacityLabel: document.getElementById('capacityLabel'),
+    slideAction: document.getElementById('slideAction'),
+    productionCard: document.getElementById('productionCard'),
+    productionRing: document.getElementById('productionRing'),
+    productionPercent: document.getElementById('productionPercent'),
+    productionActual: document.getElementById('productionActual'),
+    productionCapacity: document.getElementById('productionCapacity'),
     energyToday: document.getElementById('energyToday'),
     energyMonth: document.getElementById('energyMonth'),
     energyYear: document.getElementById('energyYear'),
@@ -23,135 +32,43 @@
     weatherCard: document.getElementById('weatherCard'),
     weatherTemp: document.getElementById('weatherTemp'),
     weatherDesc: document.getElementById('weatherDesc'),
-    weatherMeta: document.getElementById('weatherMeta')
+    weatherMeta: document.getElementById('weatherMeta'),
+    sitePhotoCard: document.getElementById('sitePhotoCard'),
+    sitePhotoFrame: document.getElementById('sitePhotoFrame'),
+    sitePhotoImage: document.getElementById('sitePhotoImage'),
+    sitePhotoPlaceholder: document.getElementById('sitePhotoPlaceholder'),
+    sitePhotoCaption: document.getElementById('sitePhotoCaption')
   };
 
   const state = {
     config: null,
     payload: null,
     connected: false,
-    activeSiteIndex: 0
+    slideTimer: null
   };
-  let siteCycleHandle = null;
+
+  function getBasePath() {
+    const scripts = Array.from(document.scripts || []);
+    const current = scripts.find((script) => script.src && /\/app\.js(\?|$)/.test(script.src));
+    if (!current) return '';
+    const url = new URL(current.src, window.location.href);
+    const path = url.pathname.replace(/\/app\.js$/, '').replace(/\/$/, '');
+    return path === '/' ? '' : path;
+  }
+
+  const basePath = getBasePath();
+  const withBasePath = (path) => `${basePath}${path}`;
+
+  function resolveAssetUrl(src) {
+    if (!src) return '';
+    if (/^(https?:)?\/\//i.test(src) || src.startsWith('data:')) return src;
+    if (src.startsWith('/')) return `${basePath}${src}`;
+    return src;
+  }
 
   if (els.archLogo && kioskConfig.brandLogoSrc) {
-    els.archLogo.src = kioskConfig.brandLogoSrc;
+    els.archLogo.src = resolveAssetUrl(kioskConfig.brandLogoSrc);
   }
-
-  function isSafeCssValue(value) {
-    return typeof value === 'string' && value.trim() && !/[;{}]/.test(value);
-  }
-
-  function setCssVar(name, value) {
-    if (!isSafeCssValue(value)) return;
-    document.documentElement.style.setProperty(name, value.trim());
-  }
-
-  function applySunIconConfig() {
-    const sun = kioskConfig.sunIcon || {};
-    const legacy = kioskConfig.heroSun || {};
-    const settings = { ...legacy, ...sun };
-
-    setCssVar('--sky-top', settings.skyColorTop);
-    setCssVar('--sky-bottom', settings.skyColorBottom);
-    setCssVar('--sky-arc', settings.arcColor);
-    setCssVar('--sun-primary', settings.sunColor || settings.primaryColor);
-    setCssVar('--sun-edge', settings.sunEdgeColor || settings.edgeColor);
-    setCssVar('--sun-glow', settings.sunGlowColor || settings.glowColor);
-    setCssVar('--building-body', settings.buildingColor);
-    setCssVar('--building-shadow', settings.buildingShadowColor);
-    setCssVar('--building-window', settings.buildingWindowColor);
-    setCssVar('--ground-color', settings.groundColor);
-
-    const size = Number(settings.sizePx || settings.size);
-    if (Number.isFinite(size) && size >= 64 && size <= 260) {
-      document.documentElement.style.setProperty('--sun-size', `${Math.round(size)}px`);
-    }
-  }
-
-  function clamp(value, min, max) {
-    return Math.min(Math.max(value, min), max);
-  }
-
-  function degToRad(value) {
-    return value * (Math.PI / 180);
-  }
-
-  function radToDeg(value) {
-    return value * (180 / Math.PI);
-  }
-
-  function normalizeDegrees(value) {
-    return ((value % 360) + 360) % 360;
-  }
-
-  function getSolarPosition(date, latitude, longitude) {
-    const julianDate = (date.getTime() / 86400000) + 2440587.5;
-    const n = julianDate - 2451545.0;
-    const meanLongitude = normalizeDegrees(280.46 + (0.9856474 * n));
-    const meanAnomaly = normalizeDegrees(357.528 + (0.9856003 * n));
-    const eclipticLongitude = meanLongitude + (1.915 * Math.sin(degToRad(meanAnomaly))) + (0.02 * Math.sin(2 * degToRad(meanAnomaly)));
-    const obliquity = 23.439 - (0.0000004 * n);
-
-    const rightAscension = Math.atan2(
-      Math.cos(degToRad(obliquity)) * Math.sin(degToRad(eclipticLongitude)),
-      Math.cos(degToRad(eclipticLongitude))
-    );
-    const declination = Math.asin(
-      Math.sin(degToRad(obliquity)) * Math.sin(degToRad(eclipticLongitude))
-    );
-
-    const utcHours =
-      date.getUTCHours() +
-      (date.getUTCMinutes() / 60) +
-      (date.getUTCSeconds() / 3600) +
-      (date.getUTCMilliseconds() / 3600000);
-
-    const gmst = normalizeDegrees((6.697375 + (0.0657098242 * n) + utcHours) * 15);
-    const localSiderealTime = normalizeDegrees(gmst + longitude);
-    const hourAngle = normalizeDegrees(localSiderealTime - radToDeg(rightAscension));
-    const hourAngleRad = degToRad(hourAngle > 180 ? hourAngle - 360 : hourAngle);
-    const latitudeRad = degToRad(latitude);
-
-    const altitude = Math.asin(
-      (Math.sin(declination) * Math.sin(latitudeRad)) +
-      (Math.cos(declination) * Math.cos(latitudeRad) * Math.cos(hourAngleRad))
-    );
-
-    const azimuth = Math.atan2(
-      -Math.sin(hourAngleRad),
-      (Math.tan(declination) * Math.cos(latitudeRad)) - (Math.sin(latitudeRad) * Math.cos(hourAngleRad))
-    );
-
-    return {
-      altitude: radToDeg(altitude),
-      azimuth: normalizeDegrees(radToDeg(azimuth) + 180)
-    };
-  }
-
-  function renderSolarTracker() {
-    if (!els.powerMark) return;
-
-    const settings = { ...(kioskConfig.heroSun || {}), ...(kioskConfig.sunIcon || {}) };
-    const latitude = Number.isFinite(Number(settings.latitude)) ? Number(settings.latitude) : 43.0389;
-    const longitude = Number.isFinite(Number(settings.longitude)) ? Number(settings.longitude) : -87.9065;
-    const position = getSolarPosition(new Date(), latitude, longitude);
-    const progress = clamp((position.azimuth - 90) / 180, 0, 1);
-    const clampedAltitude = clamp(position.altitude, -8, 72);
-    const x = 12 + (76 * progress);
-    const y = 74 - (((clampedAltitude + 8) / 80) * 50);
-    const isNight = position.altitude <= -1;
-
-    document.documentElement.style.setProperty('--sun-x', `${x}%`);
-    document.documentElement.style.setProperty('--sun-y', `${y}%`);
-    document.documentElement.style.setProperty('--sun-opacity', isNight ? '0.18' : '1');
-    document.documentElement.style.setProperty('--sun-scale', isNight ? '0.84' : '1');
-    els.powerMark.classList.toggle('night', isNight);
-  }
-
-  applySunIconConfig();
-  renderSolarTracker();
-  window.setInterval(renderSolarTracker, 60000);
 
   function setStatus(text, mode) {
     if (!els.statusPill) return;
@@ -250,8 +167,112 @@
     return sumSiteCapacities(solar && solar.sites) || sumSiteCapacities(config && config.sites);
   }
 
-  function renderWeather(weather, config) {
-    const enabled = Boolean(config && config.weatherEnabled);
+  function buildSites(solar, config) {
+    const configSites = config && Array.isArray(config.sites) ? config.sites : [];
+    const solarSites = solar && Array.isArray(solar.sites) ? solar.sites : [];
+    const max = Math.max(configSites.length, solarSites.length);
+    const sites = [];
+
+    for (let index = 0; index < max; index += 1) {
+      const configSite = configSites[index] || {};
+      const solarSite = solarSites[index] || {};
+      sites.push({
+        ...configSite,
+        ...solarSite,
+        index,
+        siteName: solarSite.siteName || configSite.siteName || `Production Site ${index + 1}`,
+        siteId: solarSite.siteId || configSite.siteId || null,
+        systemCapacityWatts: solarSite.systemCapacityWatts || configSite.systemCapacityWatts || null,
+        overview: solarSite.overview || null,
+        online: typeof solarSite.online === 'boolean' ? solarSite.online : Boolean(solarSite.overview),
+        error: solarSite.error || null
+      });
+    }
+
+    return sites;
+  }
+
+  function getSiteSlug(site, index) {
+    const id = site && site.siteId ? String(site.siteId) : String(index + 1);
+    return `site-${encodeURIComponent(id)}`;
+  }
+
+  function getCurrentSlide(sites) {
+    const hash = decodeURIComponent((window.location.hash || '').replace(/^#/, '')).trim();
+    if (!hash || hash === 'total' || hash === 'home' || hash === 'portfolio') {
+      return { type: 'total', site: null, index: -1 };
+    }
+
+    const siteToken = hash.replace(/^site-/, '');
+    const match = sites.find((site, index) => {
+      const siteId = site.siteId ? String(site.siteId) : '';
+      return hash === getSiteSlug(site, index) || siteToken === siteId || siteToken === String(index + 1);
+    });
+
+    if (!match) return { type: 'total', site: null, index: -1 };
+    return { type: 'site', site: match, index: match.index };
+  }
+
+
+  function getCurrentSlideHash() {
+    return decodeURIComponent((window.location.hash || '').replace(/^#/, '')).trim();
+  }
+
+  function getSlideSequence(sites) {
+    const sequence = ['total'];
+    (sites || []).forEach((site, index) => {
+      sequence.push(getSiteSlug(site, index));
+    });
+    return sequence;
+  }
+
+  function getSlideKeyFromHash(sites) {
+    const hash = getCurrentSlideHash();
+    if (!hash || hash === 'home' || hash === 'portfolio') return 'total';
+    const sequence = getSlideSequence(sites);
+    return sequence.includes(hash) ? hash : 'total';
+  }
+
+  function getAutoplaySettings() {
+    const autoplay = kioskConfig.slideAutoplay || {};
+    const enabled = autoplay.enabled !== false;
+    const seconds = numberOrNull(autoplay.seconds || autoplay.intervalSeconds || autoplay.delaySeconds) || 12;
+    return {
+      enabled,
+      delayMs: Math.max(4, seconds) * 1000
+    };
+  }
+
+  function advanceSlide() {
+    if (document.hidden) return;
+    const payload = state.payload || {};
+    const config = state.config || {};
+    const solar = payload && payload.solar ? payload.solar : payload;
+    const sites = buildSites(solar || {}, config || {});
+    const sequence = getSlideSequence(sites);
+    if (sequence.length <= 1) return;
+
+    const current = getSlideKeyFromHash(sites);
+    const currentIndex = Math.max(0, sequence.indexOf(current));
+    const next = sequence[(currentIndex + 1) % sequence.length];
+    if (`#${next}` !== window.location.hash) {
+      window.location.hash = next;
+    }
+  }
+
+  function startSlideAutoplay() {
+    const autoplay = getAutoplaySettings();
+    if (state.slideTimer) {
+      clearInterval(state.slideTimer);
+      state.slideTimer = null;
+    }
+    if (!autoplay.enabled) return;
+    state.slideTimer = setInterval(advanceSlide, autoplay.delayMs);
+  }
+
+  function renderWeather(weather, config, visible) {
+    const enabled = visible && Boolean(config && config.weatherEnabled);
+    if (!els.weatherCard) return;
     if (!enabled) {
       els.weatherCard.classList.add('hidden');
       return;
@@ -266,7 +287,7 @@
     }
 
     els.weatherTemp.textContent = `${Math.round(weather.main.temp)}°F`;
-    els.weatherDesc.textContent = titleCase(weather.weather && weather.weather[0] && weather.weather[0].description || '');
+    els.weatherDesc.textContent = titleCase((weather.weather && weather.weather[0] && weather.weather[0].description) || '');
     const city = weather.name || (config && config.city) || '--';
     const humidity = Number.isFinite(weather.main.humidity) ? `${weather.main.humidity}% humidity` : '';
     const wind = weather.wind && Number.isFinite(weather.wind.speed) ? `${Math.round(weather.wind.speed)} mph wind` : '';
@@ -293,90 +314,219 @@
     els.treesPlanted.textContent = compactNumber(Math.round(treesPlanted));
   }
 
-  function createSiteRow(site, index) {
-    const row = document.createElement('div');
-    row.className = `site-row ${site.online ? 'online' : 'offline'}`;
+  function getPowerWattsForSite(site) {
+    const siteIsOnline = Boolean(site && site.online && site.overview && !site.error);
+    if (!siteIsOnline) return 0;
+    return numberOrNull(site.overview && site.overview.currentPower && site.overview.currentPower.power) || 0;
+  }
+
+  function getCapacityWattsForSite(site) {
+    return normalizeCapacityToWatts(site && (site.systemCapacityWatts || site.totalSiteCapacityWatts), 'watts');
+  }
+
+  function renderProductionDisplay(actualWatts, capacityWatts) {
+    const actual = numberOrNull(actualWatts) || 0;
+    const capacity = numberOrNull(capacityWatts) || 0;
+    const ratio = capacity > 0 ? Math.max(0, Math.min(actual / capacity, 1.25)) : 0;
+    const percent = capacity > 0 ? Math.round((actual / capacity) * 100) : null;
+    const ringPercent = Math.round(Math.min(ratio, 1) * 100);
+
+    if (els.productionRing) {
+      els.productionRing.style.setProperty('--production-percent', `${ringPercent}%`);
+    }
+    if (els.productionPercent) els.productionPercent.textContent = percent === null ? '--' : `${percent}%`;
+    if (els.productionActual) els.productionActual.textContent = formatPower(actual);
+    if (els.productionCapacity) els.productionCapacity.textContent = capacity > 0 ? formatPower(capacity) : '--';
+  }
+
+  function getActionForSlide(slide) {
+    const actions = kioskConfig.slideActions || {};
+    if (slide.type === 'total') return actions.total || null;
+
+    const site = slide.site || {};
+    const siteId = site.siteId ? String(site.siteId) : '';
+    const siteName = site.siteName || '';
+    return (
+      (actions.bySiteId && siteId && actions.bySiteId[siteId]) ||
+      (actions.bySiteName && siteName && actions.bySiteName[siteName]) ||
+      (actions.byIndex && actions.byIndex[String(slide.index + 1)]) ||
+      (site.actionHref ? { href: site.actionHref, label: site.actionLabel } : null) ||
+      actions.defaultSite ||
+      null
+    );
+  }
+
+  function renderSlideAction(slide) {
+    if (!els.slideAction) return;
+    const action = getActionForSlide(slide);
+    if (!action || !action.href) {
+      els.slideAction.classList.add('hidden');
+      return;
+    }
+
+    els.slideAction.textContent = action.label || (slide.type === 'total' ? 'Open portfolio link' : 'Open site link');
+    els.slideAction.href = action.href;
+    els.slideAction.target = action.target || '_blank';
+    els.slideAction.classList.remove('hidden');
+  }
+
+  function getPhotoForSlide(slide) {
+    const photos = kioskConfig.sitePhotos || {};
+    if (slide.type === 'total') return photos.total || null;
+
+    const site = slide.site || {};
+    const siteId = site.siteId ? String(site.siteId) : '';
+    const siteName = site.siteName || '';
+    const fromSite = site.photoSrc || site.photo || site.imageSrc || site.image
+      ? { src: site.photoSrc || site.photo || site.imageSrc || site.image, caption: site.photoCaption || site.caption || siteName }
+      : null;
+
+    return (
+      (photos.bySiteId && siteId && photos.bySiteId[siteId]) ||
+      (photos.bySiteName && siteName && photos.bySiteName[siteName]) ||
+      (photos.byIndex && photos.byIndex[String(slide.index + 1)]) ||
+      fromSite ||
+      null
+    );
+  }
+
+  function renderSitePhoto(slide) {
+    if (!els.sitePhotoCard) return;
+    if (slide.type !== 'site') {
+      els.sitePhotoCard.classList.add('hidden');
+      if (els.sitePhotoImage) els.sitePhotoImage.removeAttribute('src');
+      return;
+    }
+
+    const photo = getPhotoForSlide(slide);
+    els.sitePhotoCard.classList.remove('hidden');
+    els.sitePhotoCaption.textContent = (photo && photo.caption) || (slide.site && slide.site.siteName) || 'Site photo';
+
+    if (els.sitePhotoFrame) {
+      const fit = (photo && photo.fit) || kioskConfig.sitePhotoFit || 'cover';
+      const position = (photo && photo.position) || kioskConfig.sitePhotoPosition || 'center center';
+      els.sitePhotoFrame.style.setProperty('--site-photo-fit', fit);
+      els.sitePhotoFrame.style.setProperty('--site-photo-position', position);
+    }
+
+    if (photo && photo.src) {
+      els.sitePhotoImage.src = resolveAssetUrl(photo.src);
+      els.sitePhotoImage.alt = photo.alt || `${slide.site.siteName || 'Site'} photo`;
+      els.sitePhotoImage.classList.remove('hidden');
+      els.sitePhotoPlaceholder.classList.add('hidden');
+    } else {
+      els.sitePhotoImage.removeAttribute('src');
+      els.sitePhotoImage.classList.add('hidden');
+      els.sitePhotoPlaceholder.classList.remove('hidden');
+    }
+  }
+
+  function createNavigationCard(options) {
+    const row = document.createElement('a');
+    row.className = `site-row nav-card ${options.className || ''}`.trim();
+    row.href = options.href;
+    row.setAttribute('role', 'button');
+    row.setAttribute('aria-label', options.ariaLabel || options.name);
 
     const main = document.createElement('div');
     main.className = 'site-row-main';
 
     const name = document.createElement('div');
     name.className = 'site-name';
-    name.textContent = site.siteName || `Production Site ${index + 1}`;
-
-    const capacityWatts = normalizeCapacityToWatts(site.systemCapacityWatts || site.totalSiteCapacityWatts, 'watts');
-    const siteIsOnline = Boolean(site.online && site.overview && !site.error);
-    const powerWatts = siteIsOnline
-      ? numberOrNull(site.overview && site.overview.currentPower && site.overview.currentPower.power)
-      : 0;
-    const powerText = formatPower(powerWatts === null ? 0 : powerWatts);
-
-    row.classList.toggle('online', siteIsOnline);
-    row.classList.toggle('offline', !siteIsOnline);
+    name.textContent = options.name;
 
     const meta = document.createElement('div');
     meta.className = 'site-meta';
-    meta.textContent = capacityWatts ? `${powerText} / ${formatPower(capacityWatts)} cap.` : powerText;
+    meta.textContent = options.meta;
 
     main.appendChild(name);
     main.appendChild(meta);
 
     const pill = document.createElement('div');
-    pill.className = 'site-dot';
-    pill.setAttribute('aria-label', siteIsOnline ? 'Online' : 'Offline');
-    pill.setAttribute('title', siteIsOnline ? 'Online' : 'Offline');
+    pill.className = options.dotClass || 'site-dot';
+    pill.setAttribute('aria-hidden', 'true');
 
     row.appendChild(main);
     row.appendChild(pill);
-
     return row;
   }
 
-  function renderSites(solar, config) {
-    const sites = mergeSites(solar, config);
+  function renderSites(sites, solar, slide, totalCapacityWatts) {
+    if (!els.siteList) return;
     els.siteList.innerHTML = '';
-    for (let index = 0; index < sites.length; index += 1) {
-      els.siteList.appendChild(createSiteRow(sites[index], index));
-    }
+
+    const totalPower = numberOrNull(solar && solar.overview && solar.overview.currentPower && solar.overview.currentPower.power) || 0;
+    const totalCard = createNavigationCard({
+      name: 'Total Portfolio',
+      meta: `${formatPower(totalPower)} / ${formatPower(totalCapacityWatts)} cap.`,
+      href: '#total',
+      className: `total-card ${slide.type === 'total' ? 'active' : 'online'}`,
+      dotClass: 'site-dot total-dot',
+      ariaLabel: 'Show total portfolio slide'
+    });
+    els.siteList.appendChild(totalCard);
+
+    sites.forEach((site, index) => {
+      const capacityWatts = getCapacityWattsForSite(site);
+      const siteIsOnline = Boolean(site.online && site.overview && !site.error);
+      const powerWatts = getPowerWattsForSite(site);
+      const active = slide.type === 'site' && slide.index === index;
+      const card = createNavigationCard({
+        name: site.siteName || `Production Site ${index + 1}`,
+        meta: capacityWatts ? `${formatPower(powerWatts)} / ${formatPower(capacityWatts)} cap.` : formatPower(powerWatts),
+        href: `#${getSiteSlug(site, index)}`,
+        className: `${siteIsOnline ? 'online' : 'offline'} ${active ? 'active' : ''}`,
+        ariaLabel: `Show ${site.siteName || `Production Site ${index + 1}`} slide`
+      });
+      els.siteList.appendChild(card);
+    });
   }
 
   function render(payload) {
     state.payload = payload || {};
     const config = state.config || {};
     const solar = payload && payload.solar ? payload.solar : {};
-    const overview = solar.overview || {};
+    const sites = buildSites(solar, config);
+    const slide = getCurrentSlide(sites);
+    const isTotal = slide.type === 'total';
+    const selectedSite = slide.site;
+    const overview = isTotal ? (solar.overview || {}) : ((selectedSite && selectedSite.overview) || {});
     const lifetimeWh = overview.lifeTimeData && overview.lifeTimeData.energy;
     const totalCapacityWatts = getTotalCapacityWatts(solar, config);
+    const selectedCapacityWatts = isTotal ? totalCapacityWatts : getCapacityWattsForSite(selectedSite);
+    const selectedPowerWatts = isTotal
+      ? (numberOrNull(overview.currentPower && overview.currentPower.power) || 0)
+      : getPowerWattsForSite(selectedSite);
 
-    const mergedSites = mergeSites(solar, config);
-    const cycleItems = [null, ...mergedSites];
-    const activeItem = cycleItems[state.activeSiteIndex % cycleItems.length];
-    const activeSite = activeItem;
-    const hasSites = mergedSites.length > 0;
-    const activeOverview = activeSite && activeSite.overview ? activeSite.overview : overview;
-    const displayName = activeSite ? activeSite.siteName : (solar.siteName || config.siteName || kioskConfig.siteName || 'Solar Portfolio');
-    const activeCapacityWatts = activeSite
-      ? normalizeCapacityToWatts(activeSite.systemCapacityWatts || activeSite.totalSiteCapacityWatts, 'watts')
-      : totalCapacityWatts;
+    const title = isTotal
+      ? (solar.siteName || config.siteName || kioskConfig.siteName || 'Solar Portfolio')
+      : (selectedSite && selectedSite.siteName) || 'Production Site';
 
-    els.siteName.textContent = displayName;
-    els.heroEyebrow.textContent = activeSite
-      ? `Site generation • ${state.activeSiteIndex + 1} of ${cycleItems.length}`
-      : (hasSites ? 'Portfolio generation • cumulative view' : 'Portfolio generation');
+    els.siteName.textContent = title;
+    els.slideSubtitle.textContent = isTotal ? 'Combined production across configured sites' : 'Individual site production slide';
+    els.slideEyebrow.textContent = isTotal ? 'Portfolio generation' : 'Site generation';
+    els.heroUnit.textContent = isTotal ? 'Current portfolio production' : 'Current site production';
     els.lastUpdate.textContent = formatLastUpdate(overview.lastUpdateTime);
-    els.heroValue.textContent = formatPower(activeOverview.currentPower && activeOverview.currentPower.power);
-    els.totalSiteCapacity.textContent = formatPower(activeCapacityWatts);
-    els.siteCount.textContent = Number.isFinite(solar.siteCount) ? solar.siteCount : (config.siteCount || 0);
-    els.healthySiteCount.textContent = Number.isFinite(solar.healthySiteCount) ? solar.healthySiteCount : 0;
-    els.energyToday.textContent = formatEnergy(activeOverview.lastDayData && activeOverview.lastDayData.energy);
-    els.energyMonth.textContent = formatEnergy(activeOverview.lastMonthData && activeOverview.lastMonthData.energy);
-    els.energyYear.textContent = formatEnergy(activeOverview.lastYearData && activeOverview.lastYearData.energy);
-    els.energyLifetime.textContent = formatEnergy(activeOverview.lifeTimeData && activeOverview.lifeTimeData.energy);
+    els.heroValue.textContent = formatPower(selectedPowerWatts);
+    els.totalSiteCapacity.textContent = formatPower(selectedCapacityWatts);
+    els.capacityLabel.textContent = isTotal ? 'total site capacity' : 'site capacity';
+    els.siteCount.textContent = isTotal ? (Number.isFinite(solar.siteCount) ? solar.siteCount : (config.siteCount || sites.length)) : 1;
+    els.siteCountLabel.textContent = isTotal ? 'sites' : 'site';
+    els.healthySiteCount.textContent = isTotal
+      ? (Number.isFinite(solar.healthySiteCount) ? solar.healthySiteCount : sites.filter((site) => site.online && !site.error).length)
+      : (selectedSite && selectedSite.online && !selectedSite.error ? 1 : 0);
+    els.healthySiteLabel.textContent = 'reporting';
+    els.energyToday.textContent = formatEnergy(overview.lastDayData && overview.lastDayData.energy);
+    els.energyMonth.textContent = formatEnergy(overview.lastMonthData && overview.lastMonthData.energy);
+    els.energyYear.textContent = formatEnergy(overview.lastYearData && overview.lastYearData.energy);
+    els.energyLifetime.textContent = formatEnergy(lifetimeWh);
 
-    renderImpact(activeOverview.lifeTimeData && activeOverview.lifeTimeData.energy);
-    renderSites(solar, config);
-    renderSiteImage(activeSite);
-    renderWeather(payload && payload.weather, config);
+    renderProductionDisplay(selectedPowerWatts, selectedCapacityWatts);
+    renderImpact(lifetimeWh);
+    renderSites(sites, solar, slide, totalCapacityWatts);
+    renderSlideAction(slide);
+    renderSitePhoto(slide);
+    renderWeather(payload && payload.weather, config, isTotal);
 
     const errors = payload && payload.errors ? payload.errors : {};
     if (state.connected) {
@@ -384,65 +534,17 @@
     }
   }
 
-  function mergeSites(solar, config) {
-    const configSites = config && Array.isArray(config.sites) ? config.sites : [];
-    const solarSites = solar && Array.isArray(solar.sites) ? solar.sites : [];
-    const max = Math.max(configSites.length, solarSites.length);
-    const customImages = kioskConfig.siteImages || {};
-
-    const merged = [];
-    for (let index = 0; index < max; index += 1) {
-      const configSite = configSites[index] || {};
-      const solarSite = solarSites[index] || {};
-      const siteName = solarSite.siteName || configSite.siteName || `Production Site ${index + 1}`;
-      const siteId = solarSite.siteId || configSite.siteId || null;
-      merged.push({
-        siteName,
-        siteId,
-        systemCapacityWatts: solarSite.systemCapacityWatts || configSite.systemCapacityWatts || null,
-        overview: solarSite.overview || null,
-        online: typeof solarSite.online === 'boolean' ? solarSite.online : Boolean(solarSite.overview),
-        error: solarSite.error || null,
-        imageSrc: configSite.imageSrc || customImages[String(siteId)] || customImages[siteName] || null
-      });
-    }
-    return merged;
-  }
-
-  function renderSiteImage(activeSite) {
-    if (!els.siteHeroImage) return;
-    if (!activeSite || !activeSite.imageSrc) {
-      els.siteHeroImage.classList.add('hidden');
-      els.siteHeroImage.removeAttribute('src');
-      return;
-    }
-    els.siteHeroImage.src = activeSite.imageSrc;
-    els.siteHeroImage.alt = `${activeSite.siteName} site image`;
-    els.siteHeroImage.classList.remove('hidden');
-  }
-
-  function startSiteCycle() {
-    if (siteCycleHandle) window.clearInterval(siteCycleHandle);
-    const cycleMs = Math.max(Number(kioskConfig.siteCycleMs) || 15000, 5000);
-    siteCycleHandle = window.setInterval(function () {
-      const sites = mergeSites((state.payload && state.payload.solar) || {}, state.config || {});
-      if (!sites.length) return;
-      state.activeSiteIndex = (state.activeSiteIndex + 1) % (sites.length + 1);
-      render(state.payload || {});
-    }, cycleMs);
-  }
-
   async function loadConfig() {
-    const response = await fetch('/config', { cache: 'no-store' });
+    const response = await fetch(withBasePath('/config'), { cache: 'no-store' });
     const data = await response.json();
     state.config = data;
     els.siteName.textContent = data.siteName || kioskConfig.siteName || 'Solar Portfolio';
     render({ solar: data, weather: null, errors: {} });
-    startSiteCycle();
+    startSlideAutoplay();
   }
 
   function connectSocket() {
-    const socket = io({ transports: ['websocket', 'polling'] });
+    const socket = io({ path: withBasePath('/socket.io'), transports: ['websocket', 'polling'] });
 
     socket.on('connect', function () {
       state.connected = true;
@@ -463,6 +565,10 @@
       render(payload);
     });
   }
+
+  window.addEventListener('hashchange', function () {
+    if (state.payload) render(state.payload);
+  });
 
   loadConfig()
     .then(connectSocket)

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>SolarEdge Portfolio Operations</title>
-    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="style.css?v=slides-20260512-1">
   </head>
   <body>
     <div class="page-shell">
@@ -12,12 +12,12 @@
         <div class="brand-block">
           <div class="brand-kicker">SolarEdge Live Operations</div>
           <h1 id="siteName">Loading portfolio...</h1>
-          <div class="brand-subtitle">Combined production across configured sites</div>
+          <div class="brand-subtitle" id="slideSubtitle">Combined production across configured sites</div>
         </div>
         <div class="topbar-right">
           <div class="brand-logo-card" aria-label="Installed by Arch Solar C&amp;I">
             <span class="brand-logo-kicker">Installed by</span>
-            <img id="archLogo" src="/arch-solar-ci-logo.svg" alt="Arch Solar C&amp;I">
+            <img id="archLogo" src="arch-solar-ci-logo.svg" alt="Arch Solar C&amp;I">
           </div>
           <div class="status-stack">
             <div class="status-pill" id="statusPill">Connecting</div>
@@ -29,30 +29,32 @@
       <main class="dashboard-grid">
         <section class="hero glass-panel">
           <div class="hero-copy">
-            <div class="eyebrow" id="heroEyebrow">Portfolio generation</div>
+            <div class="eyebrow" id="slideEyebrow">Portfolio generation</div>
             <h2 id="heroValue">--</h2>
-            <div class="hero-unit">Current production</div>
+            <div class="hero-unit" id="heroUnit">Current production</div>
             <div class="hero-meta">
-              <span><strong id="siteCount">0</strong> sites</span>
-              <span><strong id="healthySiteCount">0</strong> reporting</span>
-              <span class="capacity-meta-chip"><strong id="totalSiteCapacity">--</strong> total site capacity</span>
+              <span><strong id="siteCount">0</strong> <span id="siteCountLabel">sites</span></span>
+              <span><strong id="healthySiteCount">0</strong> <span id="healthySiteLabel">reporting</span></span>
+              <span class="capacity-meta-chip"><strong id="totalSiteCapacity">--</strong> <span id="capacityLabel">total site capacity</span></span>
             </div>
+            <a class="slide-action hidden" id="slideAction" href="#" target="_blank" rel="noopener">Open link</a>
           </div>
-          <div class="hero-visual">
-            <img id="siteHeroImage" class="site-hero-image hidden" alt="Current site image">
-            <div class="power-mark" id="powerMark" aria-hidden="true">
-              <div class="power-mark-arc"></div>
-              <div class="power-mark-sun"></div>
-              <div class="power-mark-ground"></div>
-              <div class="power-mark-building">
-                <div class="power-mark-building-face">
-                  <span class="power-mark-window"></span>
-                  <span class="power-mark-window"></span>
-                  <span class="power-mark-window"></span>
-                  <span class="power-mark-window"></span>
-                  <span class="power-mark-window"></span>
-                  <span class="power-mark-window"></span>
-                </div>
+
+          <div class="production-card" id="productionCard" aria-label="Production versus capacity">
+            <div class="production-ring" id="productionRing">
+              <div class="production-ring-inner">
+                <span id="productionPercent">--</span>
+                <small>of capacity</small>
+              </div>
+            </div>
+            <div class="production-card-meta">
+              <div>
+                <span>Actual</span>
+                <strong id="productionActual">--</strong>
+              </div>
+              <div>
+                <span>Capacity</span>
+                <strong id="productionCapacity">--</strong>
               </div>
             </div>
           </div>
@@ -67,6 +69,15 @@
               <div class="weather-meta" id="weatherMeta">--</div>
             </div>
           </div>
+        </section>
+
+        <section class="site-photo-card glass-panel hidden" id="sitePhotoCard">
+          <div class="section-label">Site photo</div>
+          <div class="site-photo-frame" id="sitePhotoFrame">
+            <img id="sitePhotoImage" alt="Site photo">
+            <div class="site-photo-placeholder" id="sitePhotoPlaceholder">Add a photo in kiosk-config.js</div>
+          </div>
+          <div class="site-photo-caption" id="sitePhotoCaption">--</div>
         </section>
 
         <section class="metrics-grid">
@@ -119,8 +130,8 @@
 
           <section class="sites-panel glass-panel">
             <div class="panel-header compact">
-              <h3>Site status</h3>
-              <div class="panel-note">Portfolio sites</div>
+              <h3>Slide navigation</h3>
+              <div class="panel-note">Tap a card</div>
             </div>
             <div id="siteList" class="site-list"></div>
           </section>
@@ -128,8 +139,8 @@
       </main>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="/kiosk-config.js"></script>
-    <script src="/app.js"></script>
+    <script src="socket.io/socket.io.js"></script>
+    <script src="kiosk-config.js?v=slides-20260512-1"></script>
+    <script src="app.js?v=slides-20260512-1"></script>
   </body>
 </html>

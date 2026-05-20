@@ -3,39 +3,60 @@ window.KIOSK_CONFIG = {
   // Optional title override. Usually better to set PORTFOLIO_NAME in .env.
   siteName: '',
 
-  // Optional logo override. Defaults to the bundled Arch Solar C&I vector lockup.
-  brandLogoSrc: '/arch-solar-ci-logo.svg',
-
-  // Building + sun tracker customization for the hero mark.
-  // Default coordinates point to Milwaukee, WI.
-  sunIcon: {
-    sizePx: 140,
-    latitude: 43.0389,
-    longitude: -87.9065,
-    skyColorTop: 'rgba(247, 175, 27, 0.12)',
-    skyColorBottom: 'rgba(31, 51, 84, 0.02)',
-    arcColor: 'rgba(247, 175, 27, 0.28)',
-    sunColor: '#F7AF1B',
-    sunGlowColor: 'rgba(247, 175, 27, 0.42)',
-    sunEdgeColor: 'rgba(227, 87, 0, 0.42)',
-    buildingColor: '#DBDBDB',
-    buildingShadowColor: 'rgba(31, 51, 84, 0.32)',
-    buildingWindowColor: 'rgba(31, 51, 84, 0.72)',
-    groundColor: 'rgba(219, 219, 219, 0.12)'
-  },
-
-  // Per-site view rotation in milliseconds.
-  siteCycleMs: 15000,
-
-  // Optional custom image per site view.
-  // Keys can be a site ID string ("123456") or exact site name.
-  // You can also add imageSrc directly to each site in backend config.
-  siteImages: {
-    // '123456': '/images/kiosks/site-123456.jpg',
-    // 'Pettit National Ice Center': '/images/kiosks/pettit.jpg'
-  },
+  // Logo path can be relative, root-relative, or absolute.
+  // Relative paths work under both / and /portfolio/ Nginx routes.
+  brandLogoSrc: 'arch-solar-ci-logo.png',
 
   // Optional total portfolio capacity override. Backend/env values win for data aggregation.
   systemCapacityWatts: null,
-  systemCapacityKw: null
+  systemCapacityKw: null,
+
+
+
+  // Automatic slide rotation. Set enabled false if the kiosk should stay on the clicked page.
+  slideAutoplay: {
+    enabled: true,
+    seconds: 12
+  },
+
+  // Default site photo behavior. Use 'cover' to fill the card, or 'contain' to show the whole image.
+  sitePhotoFit: 'cover',
+  sitePhotoPosition: 'center center',
+
+  // Optional slide-specific call-to-action buttons.
+  // These links show inside the hero section and change based on the active slide.
+  slideActions: {
+    total: {
+      label: 'Open portfolio dashboard',
+      href: ''
+    },
+    defaultSite: {
+      label: 'Open site dashboard',
+      href: ''
+    },
+    bySiteId: {
+      // '1234567': { label: 'Open SolarEdge site', href: 'https://monitoring.solaredge.com/solaredge-web/p/site/1234567/' }
+    },
+    bySiteName: {
+      // 'Main Office': { label: 'Open Main Office report', href: 'https://example.com/main-office' }
+    },
+    byIndex: {
+      // '1': { label: 'Open first site link', href: 'https://example.com/site-1' }
+    }
+  },
+
+  // Optional photos shown on individual site slides.
+  // Put image files in public/photos/ and reference them with relative paths.
+  sitePhotos: {
+    total: null,
+    bySiteId: {
+      // '1234567': { src: 'photos/main-office.jpg', caption: 'Main Office array', fit: 'cover', position: 'center center' }
+    },
+    bySiteName: {
+      // 'Main Office': { src: 'photos/main-office.jpg', caption: 'Main Office rooftop array', fit: 'cover', position: 'center center' }
+    },
+    byIndex: {
+      // '1': { src: 'photos/site-1.jpg', caption: 'Production Site 1', fit: 'cover', position: 'center center' }
+    }
+  }
 };

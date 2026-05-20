@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 150" role="img" aria-labelledby="title desc">
+  <title id="title">Arch Solar C&amp;I</title>
+  <desc id="desc">Arch Solar C&amp;I energy experts logo lockup with sun and turbine mark.</desc>
+  <defs>
+    <linearGradient id="sun" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#F7AF1B"/>
+      <stop offset="1" stop-color="#E35700"/>
+    </linearGradient>
+  </defs>
+  <rect width="520" height="150" rx="22" fill="#ffffff"/>
+  <g transform="translate(28 20)">
+    <circle cx="56" cy="45" r="31" fill="url(#sun)" opacity="0.95"/>
+    <g stroke="#F7AF1B" stroke-width="7" stroke-linecap="round" opacity="0.85">
+      <path d="M56 3v15"/><path d="M56 72v15"/><path d="M14 45h15"/><path d="M83 45h15"/>
+      <path d="M26 15l10 10"/><path d="M76 65l10 10"/><path d="M86 15L76 25"/><path d="M36 65L26 75"/>
+    </g>
+    <g transform="translate(78 35)" stroke="#1F3354" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M28 22v58"/>
+      <path d="M28 22L8 10"/>
+      <path d="M28 22l25-8"/>
+      <path d="M28 22l-8 27"/>
+    </g>
+  </g>
+  <text x="155" y="66" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="900" letter-spacing="1" fill="#E35700">ARCH</text>
+  <text x="155" y="105" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="900" letter-spacing="1.5" fill="#1F3354">SOLAR C&amp;I</text>
+  <text x="158" y="130" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="800" letter-spacing="3" fill="#1F3354" opacity="0.78">THE ENERGY EXPERTS</text>
+</svg>
