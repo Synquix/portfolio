@@ -11,18 +11,6 @@ window.KIOSK_CONFIG = {
   systemCapacityWatts: null,
   systemCapacityKw: null,
 
-
-
-  // Automatic slide rotation. Set enabled false if the kiosk should stay on the clicked page.
-  slideAutoplay: {
-    enabled: true,
-    seconds: 12
-  },
-
-  // Default site photo behavior. Use 'cover' to fill the card, or 'contain' to show the whole image.
-  sitePhotoFit: 'cover',
-  sitePhotoPosition: 'center center',
-
   // Optional slide-specific call-to-action buttons.
   // These links show inside the hero section and change based on the active slide.
   slideActions: {
@@ -35,7 +23,12 @@ window.KIOSK_CONFIG = {
       href: ''
     },
     bySiteId: {
-      // '1234567': { label: 'Open SolarEdge site', href: 'https://monitoring.solaredge.com/solaredge-web/p/site/1234567/' }
+      '4606546': { label: 'Open SolarEdge site', href: 'https://monitoring.solaredge.com/solaredge-web/p/site/4606546/' },
+      '4570997': { label: 'Open SolarEdge site', href: 'https://monitoring.solaredge.com/solaredge-web/p/site/4570997/' },
+      '4539873': { label: 'Open SolarEdge site', href: 'https://monitoring.solaredge.com/solaredge-web/p/site/4539873/' },
+      '2087486': { label: 'Open SolarEdge site', href: 'https://monitoring.solaredge.com/solaredge-web/p/site/2087486/' },
+      '4856078': { label: 'Open SolarEdge site', href: 'https://monitoring.solaredge.com/solaredge-web/p/site/4856078/' },
+      '4601205': { label: 'Open SolarEdge site', href: 'https://monitoring.solaredge.com/solaredge-web/p/site/4601205/' }
     },
     bySiteName: {
       // 'Main Office': { label: 'Open Main Office report', href: 'https://example.com/main-office' }
@@ -47,16 +40,21 @@ window.KIOSK_CONFIG = {
 
   // Optional photos shown on individual site slides.
   // Put image files in public/photos/ and reference them with relative paths.
-  sitePhotos: {
-    total: null,
-    bySiteId: {
-      // '1234567': { src: 'photos/main-office.jpg', caption: 'Main Office array', fit: 'cover', position: 'center center' }
-    },
-    bySiteName: {
-      // 'Main Office': { src: 'photos/main-office.jpg', caption: 'Main Office rooftop array', fit: 'cover', position: 'center center' }
-    },
-    byIndex: {
-      // '1': { src: 'photos/site-1.jpg', caption: 'Production Site 1', fit: 'cover', position: 'center center' }
-    }
+sitePhotos: {
+  total: null,
+  bySiteId: {
+    '4606546': { src: 'photos/firefly.png', caption: '' },
+    '4570997': { src: 'photos/police.png', caption: '' },
+    '4539873': { src: 'photos/muellner.png', caption: '' },
+    '2087486': { src: 'photos/cityhall.png', caption: '' },
+    '4856078': { src: 'photos/fs52.png', caption: '' },
+    '4601205': { src: 'photos/potter.png', caption: '', fit: 'cover', position: 'center center' }
+  },
+  bySiteName: {
+    // Optional fallback by exact site name
+  },
+  byIndex: {
+    // Optional fallback by slide order
   }
+}
 };

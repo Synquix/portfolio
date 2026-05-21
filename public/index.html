@@ -1,142 +1,146 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SolarEdge Project Dashboard</title>
-  <meta name="solaredgekiosk-build" content="portfolio-photo-weather-v7" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=portfolio-photo-weather-v7" />
-  <link rel="stylesheet" href="company-style.css?v=portfolio-photo-weather-v7" />
-  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-</head>
-<body class="scene-night">
-  <canvas id="globe" aria-hidden="true"></canvas>
-  <canvas id="particles" aria-hidden="true"></canvas>
-  <div class="ambient ambient-one" aria-hidden="true"></div>
-  <div class="ambient ambient-two" aria-hidden="true"></div>
-
-  <main class="dashboard-shell">
-    <header class="topbar glass-panel">
-      <div class="site-heading">
-        <p class="eyebrow">SolarEdge Project Operations</p>
-        <h1 id="siteName">Loading project...</h1>
-      </div>
-
-      <div class="topbar-right">
-        <div class="brand-lockup" aria-label="Installed by Arch Solar C&amp;I">
-          <span>Installed by</span>
-          <img src="arch-solar-ci-logo.png" alt="Arch Solar C&amp;I" />
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SolarEdge Portfolio Operations</title>
+    <link rel="stylesheet" href="style.css?v=slides-20260512-1">
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar glass-panel">
+        <div class="brand-block">
+          <div class="brand-kicker">SolarEdge Live Operations</div>
+          <h1 id="siteName">Loading portfolio...</h1>
+          <div class="brand-subtitle" id="slideSubtitle">Combined production across configured sites</div>
         </div>
-
-        <div class="system-status">
-          <div class="status-pill" id="connectionStatus">
-            <span class="status-dot"></span>
-            Connecting
+        <div class="topbar-right">
+          <div class="brand-logo-card" aria-label="Installed by Arch Solar C&amp;I">
+            <span class="brand-logo-kicker">Installed by</span>
+            <img id="archLogo" src="arch-solar-ci-logo.svg" alt="Arch Solar C&amp;I">
           </div>
-          <div class="timestamp">
-            <span>Last update</span>
-            <strong id="lastUpdated">--</strong>
+          <div class="status-stack">
+            <div class="status-pill" id="statusPill">Connecting</div>
+            <div class="last-update" id="lastUpdate">Last update --</div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
 
-    <section class="hero-grid">
-      <div class="main-column">
-        <article class="hero-card glass-panel">
-          <div class="card-header">
-            <div>
-              <p class="eyebrow">Project production</p>
-              <h2 id="power">--</h2>
+      <main class="dashboard-grid">
+        <section class="hero glass-panel">
+          <div class="hero-copy">
+            <div class="eyebrow" id="slideEyebrow">Portfolio generation</div>
+            <h2 id="heroValue">--</h2>
+            <div class="hero-unit" id="heroUnit">Current production</div>
+            <div class="hero-meta">
+              <span><strong id="siteCount">0</strong> <span id="siteCountLabel">sites</span></span>
+              <span><strong id="healthySiteCount">0</strong> <span id="healthySiteLabel">reporting</span></span>
+              <span class="capacity-meta-chip"><strong id="totalSiteCapacity">--</strong> <span id="capacityLabel">total site capacity</span></span>
             </div>
-            <span class="unit-badge" id="powerUnit">W</span>
+            <a class="slide-action hidden" id="slideAction" href="#" target="_blank" rel="noopener">Open link</a>
           </div>
 
-          <div class="capacity-wrap">
-            <div class="capacity-track">
-              <div class="capacity-fill" id="capacityFill"></div>
+          <div class="production-card" id="productionCard" aria-label="Production versus capacity">
+            <div class="production-ring" id="productionRing">
+              <div class="production-ring-inner">
+                <span id="productionPercent">--</span>
+                <small>of capacity</small>
+              </div>
             </div>
-            <div class="capacity-meta">
-              <span>Estimated project load</span>
-              <strong id="capacityPercent">--</strong>
-            </div>
-          </div>
-
-          <div class="insight-row">
-            <div>
-              <span>Project capacity</span>
-              <strong><span id="pred">--</span> <span id="predUnit">kW</span></strong>
-            </div>
-            <div>
-              <span>Operating mode</span>
-              <strong id="modeLabel">Standby</strong>
+            <div class="production-card-meta">
+              <div>
+                <span>Actual</span>
+                <strong id="productionActual">--</strong>
+              </div>
+              <div>
+                <span>Capacity</span>
+                <strong id="productionCapacity">--</strong>
+              </div>
             </div>
           </div>
-        </article>
+        </section>
 
-        <aside class="weather-card glass-panel">
-          <p class="eyebrow">Local conditions</p>
+        <section class="weather-card glass-panel hidden" id="weatherCard">
+          <div class="section-label">Weather</div>
           <div class="weather-main">
-            <div class="weather-icon" id="weatherIcon" aria-hidden="true">☀</div>
+            <div class="weather-temp" id="weatherTemp">--</div>
             <div>
-              <div id="weather" class="weather-value">Waiting</div>
-              <p class="weather-caption" id="weatherCaption">Weather feed will appear here.</p>
+              <div class="weather-desc" id="weatherDesc">--</div>
+              <div class="weather-meta" id="weatherMeta">--</div>
             </div>
           </div>
-        </aside>
-      </div>
+        </section>
 
-      <aside class="photo-card glass-panel" id="photoCard">
-        <p class="eyebrow">Site photos</p>
-        <div class="photo-placeholder" id="photoPlaceholder">Add photos in kiosk-config.js</div>
-      </aside>
-    </section>
+        <section class="site-photo-card glass-panel hidden" id="sitePhotoCard">
+          <div class="section-label">Site photo</div>
+          <div class="site-photo-frame" id="sitePhotoFrame">
+            <img id="sitePhotoImage" alt="Site photo">
+            <div class="site-photo-placeholder" id="sitePhotoPlaceholder">Add a photo in kiosk-config.js</div>
+          </div>
+          <div class="site-photo-caption" id="sitePhotoCaption">--</div>
+        </section>
 
-    <section class="metrics-grid" aria-label="Project solar production metrics">
-      <article class="metric-card glass-panel">
-        <span>Today</span>
-        <strong id="todayEnergy">--</strong>
-        <small id="todayUnit">kWh</small>
-      </article>
-      <article class="metric-card glass-panel">
-        <span>This Month</span>
-        <strong id="monthEnergy">--</strong>
-        <small id="monthUnit">kWh</small>
-      </article>
-      <article class="metric-card glass-panel">
-        <span>Lifetime</span>
-        <strong id="lifetimeEnergy">--</strong>
-        <small id="lifetimeUnit">MWh</small>
-      </article>
-      <article class="metric-card glass-panel">
-        <span>CO2 Offset</span>
-        <strong id="co2Offset">--</strong>
-        <small>estimated lbs</small>
-      </article>
-      <article class="metric-card glass-panel impact-card">
-        <span>Miles Avoided</span>
-        <strong id="milesAvoided">--</strong>
-        <small>equivalent miles</small>
-      </article>
-      <article class="metric-card glass-panel impact-card">
-        <span>Trees Planted</span>
-        <strong id="treesPlanted">--</strong>
-        <small>10-year seedlings</small>
-      </article>
-      <article class="metric-card glass-panel impact-card">
-        <span>Devices Charged</span>
-        <strong id="devicesCharged">--</strong>
-        <small>smartphone charges</small>
-      </article>
-    </section>
-  </main>
+        <section class="metrics-grid">
+          <article class="metric-card glass-panel accent">
+            <span>Today</span>
+            <strong id="energyToday">--</strong>
+            <small>energy produced</small>
+          </article>
+          <article class="metric-card glass-panel">
+            <span>This month</span>
+            <strong id="energyMonth">--</strong>
+            <small>energy produced</small>
+          </article>
+          <article class="metric-card glass-panel">
+            <span>This year</span>
+            <strong id="energyYear">--</strong>
+            <small>energy produced</small>
+          </article>
+          <article class="metric-card glass-panel">
+            <span>Lifetime</span>
+            <strong id="energyLifetime">--</strong>
+            <small>energy produced</small>
+          </article>
+        </section>
 
-  <script src="kiosk-config.js?v=portfolio-photo-weather-v7"></script>
-  <script src="app.js?v=portfolio-photo-weather-v7"></script>
-  <script src="photo-card.js?v=portfolio-photo-weather-v7"></script>
-</body>
+        <section class="lower-grid">
+          <section class="impact-panel glass-panel">
+            <div class="panel-header compact">
+              <h3>Environmental impact</h3>
+              <div class="panel-note">Lifetime estimate</div>
+            </div>
+            <div class="impact-grid">
+              <article class="impact-card">
+                <span>Miles driven</span>
+                <strong id="milesDriven">--</strong>
+                <small>avoided</small>
+              </article>
+              <article class="impact-card">
+                <span>Devices charged</span>
+                <strong id="devicesCharged">--</strong>
+                <small>smartphones</small>
+              </article>
+              <article class="impact-card">
+                <span>Trees planted</span>
+                <strong id="treesPlanted">--</strong>
+                <small>equivalent</small>
+              </article>
+            </div>
+          </section>
+
+          <section class="sites-panel glass-panel">
+            <div class="panel-header compact">
+              <h3>Slide navigation</h3>
+              <div class="panel-note">Tap a card</div>
+            </div>
+            <div id="siteList" class="site-list"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="socket.io/socket.io.js"></script>
+    <script src="kiosk-config.js?v=slides-20260512-1"></script>
+    <script src="app.js?v=slides-20260512-1"></script>
+  </body>
 </html>
